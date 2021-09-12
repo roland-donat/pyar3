@@ -1,2 +1,8 @@
 # pyar3
-Altarica 3 Python tools
+
+`pyar3` is a Python package providing some tools dedicated to Altarica 3 modelling langage.
+
+## Installation
+
+Simply execute :
+`pip install `

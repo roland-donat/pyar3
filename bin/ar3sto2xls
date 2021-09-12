@@ -1,0 +1,79 @@
+#!/usr/bin/env python
+
+# ----------------------------------------------
+# Module import
+# ----------------------------------------------
+import logging
+import pyar3
+
+import pkg_resources
+import os
+import argparse
+import logging
+import sys
+
+installed_pkg = {pkg.key for pkg in pkg_resources.working_set}
+if 'ipdb' in installed_pkg:
+    import ipdb  # noqa: 401
+
+logging.basicConfig(stream=sys.stdout,
+                    level=logging.INFO)
+
+# ----------------------------------------------
+# Study template
+# ----------------------------------------------
+app_config = {}
+app_config["app_name_short"] = "ar3stoxls"
+app_config["app_name_long"] = app_config["app_name_short"]
+app_config["version"] = "0.0.1"
+
+
+# CLI parameters management
+# -------------------------
+APP_ARG_PARSER = argparse.ArgumentParser(
+    description=app_config["app_name_short"] + " " + app_config["version"])
+
+
+APP_ARG_PARSER.add_argument(
+    dest='ar3res_filename',
+    help='AR3 Stochastic Simulator csv filename.')
+
+APP_ARG_PARSER.add_argument(
+    '-o', '--output-xls-file',
+    dest='xls_filename',
+    action='store',
+    default=None,
+    help='xls filename to store results.')
+
+APP_ARG_PARSER.add_argument(
+    '-v', '--verbose',
+    dest='verbose_mode',
+    action='store_true',
+    default=False,
+    help='Display log information on stardard output.')
+
+APP_ARG_PARSER.add_argument(
+    '-d', '--debug',
+    dest='debug_mode',
+    action='store_true',
+    default=False,
+    help='Display debug on stardard output.')
+
+app_config.update(vars(APP_ARG_PARSER.parse_args()))
+
+# Logging configuration
+if app_config["verbose_mode"]:
+    logging.basicConfig(stream=sys.stdout,
+                        level=logging.INFO)
+if app_config["debug_mode"]:
+    logging.basicConfig(stream=sys.stdout,
+                        level=logging.DEBUG)
+
+study_res = pyar3.STOStudyResults.from_result_csv(
+    app_config["ar3res_filename"])
+
+if app_config["xls_filename"] is None:
+    app_config["xls_filename"] = \
+        app_config["ar3res_filename"].replace("csv", "xlsx")
+
+study_res.to_excel(app_config["xls_filename"])
