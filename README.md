@@ -9,7 +9,7 @@ Simply execute :
 
 ## Script `ar3sto2xls`
 
-Installing `pyar3` package make the script `ar3sto2xls` available in yout system path.
+Installing `pyar3` package make the script `ar3sto2xls` available in your system path (at least on Linux).
 
 This tool aims to convert stochastic simulator raw result csv file into Excel file with one tab for
 each requested indicator.
