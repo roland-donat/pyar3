@@ -1,0 +1,40 @@
+name: First study
+description: I am proud of my first study
+
+main_block: myblock
+
+indicators:
+  - observer: obs_1
+    type: Boolean
+    measure: has_value
+    stats:
+      - mean
+      - standard-deviation
+      - confidence-range
+  - observer: obs_1
+    type: Boolean
+    measure: had_value
+    stats:
+      - mean
+      - standard-deviation
+      - confidence-range
+  - observer: obs_2
+    type: Boolean
+    measure: has_value
+    stats:
+      - mean
+      - standard-deviation
+  - observer: obs_2
+    type: Boolean
+    measure: had_value
+    stats:
+      - mean
+
+mission:
+  first: 0
+  last: 1000
+  step: 10
+
+simu_params:
+  nb_executions: 1000
+  seed: 1234

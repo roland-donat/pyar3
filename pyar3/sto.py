@@ -2,6 +2,8 @@ import pandas as pd
 import typing
 import pydantic
 import pkg_resources
+import yaml
+from lxml import etree
 
 import logging
 
@@ -27,13 +29,15 @@ class SimIndicator(pydantic.BaseModel):
 class STOIndicator(SimIndicator):
     observer: str = pydantic.Field(None, description="AR3 observer name")
     type: str = pydantic.Field(None, description="Indicator type")
+    measure: str = pydantic.Field(None, description="Measure")
+    stats: list = pydantic.Field([], description="Stats to be computed")
     data: PandasDataFrame = pydantic.Field(
         None, description="Indicator estimates")
 
 
 class STOMetaData(pydantic.BaseModel):
     main_block: str = pydantic.Field(
-        None, description="Name of model mail block")
+        None, description="Name of model main block")
     source_file: str = pydantic.Field(None, description="Source file path")
     tool_version: str = pydantic.Field(None, description="Simulator version")
     compiler_version: str = pydantic.Field(
@@ -73,6 +77,12 @@ class STOMetaData(pydantic.BaseModel):
         obj = cls(**cls_specs)
 
         return obj
+
+
+class STOSimulatorParam(pydantic.BaseModel):
+    nb_executions: int = pydantic.Field(
+        None, description="Number of simulations")
+    seed: int = pydantic.Field(None, description="Simulator seed")
 
 
 class STOMission(pydantic.BaseModel):
@@ -238,3 +248,108 @@ class STOStudyResults(pydantic.BaseModel):
                                 index=False)
 
         writer.save()
+
+
+class STOStudy(pydantic.BaseModel):
+
+    name: str = pydantic.Field(
+        None, description="Name of the study")
+
+    description: str = pydantic.Field(
+        None, description="Study description")
+
+    main_block: str = pydantic.Field(
+        None, description="Study main block name")
+
+    indicators: typing.List[STOIndicator] = pydantic.Field(
+        [], description="List of indicators")
+
+    mission: STOMission = pydantic.Field(
+        None, description="Mission parameters")
+
+    simu_params: STOSimulatorParam = pydantic.Field(
+        None, description="Simulator parametters")
+
+    @classmethod
+    def from_yaml(cls, yaml_filename, **kwrds):
+
+        with open(yaml_filename, 'r',
+                  encoding="utf-8") as yaml_file:
+            try:
+                study_specs = yaml.load(yaml_file,
+                                        Loader=yaml.FullLoader)
+            except yaml.YAMLError as exc:
+                logging.error(exc)
+
+        obj = cls(**{**study_specs, **kwrds})
+
+        return obj
+
+    def to_idf(self, filename):
+
+        idf_root = etree.Element('ar3ccp')
+
+        observers = {}
+
+        for indic in self.indicators:
+
+            if not(indic.observer in observers.keys()):
+                # ipdb.set_trace()
+                observers[indic.observer] = etree.SubElement(
+                    idf_root, "calculation")
+                observers[indic.observer].set('observer', indic.observer)
+
+            indic_name = f"{indic.observer}_{indic.measure}"
+
+            # observers[indic.observer].append(
+        # items = ET.SubElement(data, 'items')
+        # item1 = ET.SubElement(items, 'item')
+        # item2 = ET.SubElement(items, 'item')
+        # item1.set('name','item1')
+        # item2.set('name','item2')
+        # item1.text = 'item1abc'
+        # item2.text = 'item2abc'
+
+        idf_tree = etree.ElementTree(idf_root)
+
+        # with open(filename, "w") as idf_file:
+        idf_tree.write(filename, pretty_print=True)
+
+# XML IDF examples
+# <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+# <ar3ccp>
+#    <calculation observer="obs_Source_flow_out">
+#       <indicator name="src_avl_has_value" type="has-value" value="true">
+#          <mean/>
+#          <standard-deviation/>
+#          <confidence-range/>
+#       </indicator>
+#       <indicator name="src_avl_had_value" type="had-value" value="true">
+#          <mean/>
+#          <standard-deviation/>
+#          <confidence-range/>
+#       </indicator>
+#       <indicator name="src_avl_sojourn_time" type="sojourn-time" value="true">
+#          <mean/>
+#          <standard-deviation/>
+#          <confidence-range/>
+#       </indicator>
+#    </calculation>
+#    <calculation observer="obs_Target_flow_in">
+#       <indicator name="target_avl_has_value" type="has-value" value="true">
+#          <mean/>
+#          <standard-deviation/>
+#          <confidence-range/>
+#       </indicator>
+#       <indicator name="target_avl_had_value" type="had-value" value="true">
+#          <mean/>
+#          <standard-deviation/>
+#          <confidence-range/>
+#       </indicator>
+#       <indicator name="target_avl_sojourn_time" type="sojourn-time" value="true">
+#          <mean/>
+#          <standard-deviation/>
+#          <confidence-range/>
+#       </indicator>
+#    </calculation>
+# </ar3ccp>

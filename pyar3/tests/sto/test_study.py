@@ -14,13 +14,16 @@ pathlib.Path(DATA_PATH).mkdir(parents=True, exist_ok=True)
 pathlib.Path(EXPECTED_PATH).mkdir(parents=True, exist_ok=True)
 
 
-def test_study_results_load():
+def test_study_load():
 
-    study_res_filename = os.path.join(DATA_PATH,
-                                      "results_test_sys_1.csv")
+    study_filename = os.path.join(DATA_PATH,
+                                  "study_1.yaml")
 
-    study_res = pyar3.STOStudyResults.from_result_csv(study_res_filename)
+    study = pyar3.STOStudy.from_yaml(study_filename)
 
-    # IMPLEMENT TESTS HERE
+    idf_filename = os.path.join(EXPECTED_PATH,
+                                "study_1.idf")
+    study.to_idf(idf_filename)
+    print(study)
 
     assert True
