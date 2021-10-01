@@ -336,9 +336,9 @@ class STOStudy(pydantic.BaseModel):
 
     def to_mdf(self, filename):
 
-        idf_root = etree.Element('ar3ccp')
+        mdf_root = etree.Element('ar3ccp')
 
-        simu_elt = etree.SubElement(idf_root, "simulation")
+        simu_elt = etree.SubElement(mdf_root, "simulation")
         simu_elt.set('seed', str(self.simu_params.seed))
         simu_elt.set('number-of-runs', str(self.simu_params.nb_runs))
         simu_elt.set('results-csv', str(self.simu_params.result_filename))
@@ -353,9 +353,9 @@ class STOStudy(pydantic.BaseModel):
         range_elt.set('from', str(self.simu_params.schedule_from))
         range_elt.set('to', str(self.simu_params.schedule_to))
 
-        idf_tree = etree.ElementTree(idf_root)
+        mdf_tree = etree.ElementTree(mdf_root)
 
         # Header required ?
         # <?xml version="1.0" ?>
         # <!DOCTYPE ar3ccp>
-        idf_tree.write(filename, pretty_print=True)
+        mdf_tree.write(filename, pretty_print=True)
