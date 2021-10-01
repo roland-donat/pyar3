@@ -6,35 +6,34 @@ main_block: myblock
 indicators:
   - observer: obs_1
     type: Boolean
-    measure: has_value
+    measure: has-value
     stats:
       - mean
       - standard-deviation
       - confidence-range
   - observer: obs_1
     type: Boolean
-    measure: had_value
+    measure: had-value
     stats:
       - mean
       - standard-deviation
       - confidence-range
   - observer: obs_2
     type: Boolean
-    measure: has_value
+    measure: has-value
     stats:
       - mean
       - standard-deviation
   - observer: obs_2
     type: Boolean
-    measure: had_value
+    measure: had-value
     stats:
       - mean
 
-mission:
-  first: 0
-  last: 1000
-  step: 10
-
 simu_params:
-  nb_executions: 1000
-  seed: 1234
+  nb_runs: 999
+  seed: 4321
+  result_filename: first_study.csv
+  schedule_from: 0
+  schedule_to: 500
+  schedule_step: 10

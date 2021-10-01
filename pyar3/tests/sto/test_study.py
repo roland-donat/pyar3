@@ -24,6 +24,10 @@ def test_study_load():
     idf_filename = os.path.join(EXPECTED_PATH,
                                 "study_1.idf")
     study.to_idf(idf_filename)
+    mdf_filename = os.path.join(EXPECTED_PATH,
+                                "study_1.mdf")
+    study.to_mdf(mdf_filename)
+
     print(study)
 
     assert True

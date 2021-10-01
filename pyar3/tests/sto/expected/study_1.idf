@@ -1,4 +1,23 @@
 <ar3ccp>
-  <calculation observer="obs_1"/>
-  <calculation observer="obs_2"/>
+  <calculation observer="obs_1">
+    <indicator name="obs_1__has-value" type="has-value" value="true">
+      <mean/>
+      <standard-deviation/>
+      <confidence-range/>
+    </indicator>
+    <indicator name="obs_1__had-value" type="had-value" value="true">
+      <mean/>
+      <standard-deviation/>
+      <confidence-range/>
+    </indicator>
+  </calculation>
+  <calculation observer="obs_2">
+    <indicator name="obs_2__has-value" type="has-value" value="true">
+      <mean/>
+      <standard-deviation/>
+    </indicator>
+    <indicator name="obs_2__had-value" type="had-value" value="true">
+      <mean/>
+    </indicator>
+  </calculation>
 </ar3ccp>

@@ -30,9 +30,22 @@ class STOIndicator(SimIndicator):
     observer: str = pydantic.Field(None, description="AR3 observer name")
     type: str = pydantic.Field(None, description="Indicator type")
     measure: str = pydantic.Field(None, description="Measure")
+    value: str = pydantic.Field(
+        None, description="Indicator value to monitor (for categorical indicator)")
     stats: list = pydantic.Field([], description="Stats to be computed")
     data: PandasDataFrame = pydantic.Field(
         None, description="Indicator estimates")
+
+    @pydantic.root_validator()
+    def cls_validator(cls, obj):
+        if obj.get('name') is None:
+            obj['name'] = f"{obj.get('observer', '')}__{obj.get('measure', '')}"
+
+        if obj.get('type') == "Boolean":
+            if not(obj.get('value') in ["true", "false"]):
+                obj['value'] = "true"
+
+        return obj
 
 
 class STOMetaData(pydantic.BaseModel):
@@ -79,13 +92,21 @@ class STOMetaData(pydantic.BaseModel):
         return obj
 
 
-class STOSimulatorParam(pydantic.BaseModel):
-    nb_executions: int = pydantic.Field(
-        None, description="Number of simulations")
-    seed: int = pydantic.Field(None, description="Simulator seed")
+class STOSimulationParam(pydantic.BaseModel):
+    nb_runs: int = pydantic.Field(
+        100, description="Number of simulations")
+    seed: int = pydantic.Field(1234, description="Simulator seed")
+    result_filename: str = pydantic.Field(
+        "result.csv", description="Result filename")
+    schedule_from: float = pydantic.Field(...,
+                                          description="Simulation schedule origin")
+    schedule_to: float = pydantic.Field(...,
+                                        description="Simulation schedule end")
+    schedule_step: float = pydantic.Field(...,
+                                          description="Simulation schedule step")
 
 
-class STOMission(pydantic.BaseModel):
+class STOMissionResult(pydantic.BaseModel):
     nb_executions: int = pydantic.Field(
         None, description="Number of simulations")
     seed: int = pydantic.Field(None, description="Simulator seed")
@@ -146,8 +167,8 @@ class STOStudyResults(pydantic.BaseModel):
     meta_data: STOMetaData = pydantic.Field(
         STOMetaData(), description="Study meta-line")
 
-    mission: STOMission = pydantic.Field(
-        STOMission(), description="Performance fitting parametters")
+    mission: STOMissionResult = pydantic.Field(
+        STOMissionResult(), description="Performance fitting parametters")
 
     indicators: typing.Dict[str, STOIndicator] = pydantic.Field(
         {}, description="Dictionary of simulation indicators")
@@ -174,7 +195,7 @@ class STOStudyResults(pydantic.BaseModel):
         cls_specs = {}
 
         cls_specs["meta_data"] = STOMetaData.from_raw_lines(raw_lines)
-        cls_specs["mission"] = STOMission.from_raw_lines(raw_lines)
+        cls_specs["mission"] = STOMissionResult.from_raw_lines(raw_lines)
         cls_specs["indicators"] = cls.indicators_from_raw_lines(raw_lines)
 
         obj = cls(**cls_specs)
@@ -264,10 +285,7 @@ class STOStudy(pydantic.BaseModel):
     indicators: typing.List[STOIndicator] = pydantic.Field(
         [], description="List of indicators")
 
-    mission: STOMission = pydantic.Field(
-        None, description="Mission parameters")
-
-    simu_params: STOSimulatorParam = pydantic.Field(
+    simu_params: STOSimulationParam = pydantic.Field(
         None, description="Simulator parametters")
 
     @classmethod
@@ -295,61 +313,49 @@ class STOStudy(pydantic.BaseModel):
 
             if not(indic.observer in observers.keys()):
                 # ipdb.set_trace()
-                observers[indic.observer] = etree.SubElement(
-                    idf_root, "calculation")
+                observers[indic.observer] = \
+                    etree.SubElement(idf_root, "calculation")
                 observers[indic.observer].set('observer', indic.observer)
 
-            indic_name = f"{indic.observer}_{indic.measure}"
+            indic_elt = \
+                etree.SubElement(observers[indic.observer],
+                                 "indicator")
+            indic_elt.set('name', indic.name)
+            indic_elt.set('type', indic.measure)
+            indic_elt.set('value', indic.value)
 
-            # observers[indic.observer].append(
-        # items = ET.SubElement(data, 'items')
-        # item1 = ET.SubElement(items, 'item')
-        # item2 = ET.SubElement(items, 'item')
-        # item1.set('name','item1')
-        # item2.set('name','item2')
-        # item1.text = 'item1abc'
-        # item2.text = 'item2abc'
+            for stat in indic.stats:
+                # stat_elt can have attribute for more complex stat (ex: distribution)
+                stat_elt = \
+                    etree.SubElement(indic_elt, stat)
 
         idf_tree = etree.ElementTree(idf_root)
 
-        # with open(filename, "w") as idf_file:
+        # Header required ? # <?xml version="1.0" encoding="UTF-8" standalone="no"?>
         idf_tree.write(filename, pretty_print=True)
 
-# XML IDF examples
-# <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-# <ar3ccp>
-#    <calculation observer="obs_Source_flow_out">
-#       <indicator name="src_avl_has_value" type="has-value" value="true">
-#          <mean/>
-#          <standard-deviation/>
-#          <confidence-range/>
-#       </indicator>
-#       <indicator name="src_avl_had_value" type="had-value" value="true">
-#          <mean/>
-#          <standard-deviation/>
-#          <confidence-range/>
-#       </indicator>
-#       <indicator name="src_avl_sojourn_time" type="sojourn-time" value="true">
-#          <mean/>
-#          <standard-deviation/>
-#          <confidence-range/>
-#       </indicator>
-#    </calculation>
-#    <calculation observer="obs_Target_flow_in">
-#       <indicator name="target_avl_has_value" type="has-value" value="true">
-#          <mean/>
-#          <standard-deviation/>
-#          <confidence-range/>
-#       </indicator>
-#       <indicator name="target_avl_had_value" type="had-value" value="true">
-#          <mean/>
-#          <standard-deviation/>
-#          <confidence-range/>
-#       </indicator>
-#       <indicator name="target_avl_sojourn_time" type="sojourn-time" value="true">
-#          <mean/>
-#          <standard-deviation/>
-#          <confidence-range/>
-#       </indicator>
-#    </calculation>
-# </ar3ccp>
+    def to_mdf(self, filename):
+
+        idf_root = etree.Element('ar3ccp')
+
+        simu_elt = etree.SubElement(idf_root, "simulation")
+        simu_elt.set('seed', str(self.simu_params.seed))
+        simu_elt.set('number-of-runs', str(self.simu_params.nb_runs))
+        simu_elt.set('results-csv', str(self.simu_params.result_filename))
+
+        mission_time = self.simu_params.schedule_to
+
+        schedule_elt = etree.SubElement(simu_elt, "schedule")
+        schedule_elt.set('mission-time', str(mission_time))
+
+        range_elt = etree.SubElement(schedule_elt, "range")
+        range_elt.set('step', str(self.simu_params.schedule_step))
+        range_elt.set('from', str(self.simu_params.schedule_from))
+        range_elt.set('to', str(self.simu_params.schedule_to))
+
+        idf_tree = etree.ElementTree(idf_root)
+
+        # Header required ?
+        # <?xml version="1.0" ?>
+        # <!DOCTYPE ar3ccp>
+        idf_tree.write(filename, pretty_print=True)
