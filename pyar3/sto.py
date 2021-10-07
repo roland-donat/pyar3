@@ -334,7 +334,10 @@ class STOStudy(pydantic.BaseModel):
         # Header required ? # <?xml version="1.0" encoding="UTF-8" standalone="no"?>
         idf_tree.write(filename, pretty_print=True)
 
-    def to_mdf(self, filename):
+    def to_mdf(self, filename, result_filename=None):
+
+        if not(result_filename is None):
+            self.simu_params.result_filename = result_filename
 
         mdf_root = etree.Element('ar3ccp')
 
