@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+
+# Standard Python modules
+import os
+import sys
+import shutil
+import pathlib
+import tempfile
+import subprocess
+import argparse
+import logging
+import logging.handlers
+import glob
+import pkg_resources
+installed_pkg = {pkg.key for pkg in pkg_resources.working_set}
+if 'ipdb' in installed_pkg:
+    import ipdb
+
+# APP info
+# --------
+APP_NAME_SHORT = "ar3simu"
+APP_NAME_LONG = "Python wrapper for Altarica 3 simulator"
+APP_VERSION = "0.0.2"
+APP_AUTHOR = "EdgeMind"
+
+APP_DIR = os.path.dirname(os.path.realpath(__file__))
+BIN_DIR = os.path.join(APP_DIR, f"bin_{sys.platform}")
+CWD_DIR = os.getcwd()
+TMP_DIR = os.path.join(tempfile.gettempdir(), "ar3simu")
+
+# Parse command-line arguments
+# ----------------------------
+APP_ARG_PARSER = argparse.ArgumentParser(
+    description=APP_NAME_LONG + " " + APP_VERSION)
+
+
+APP_ARG_PARSER.add_argument(
+    '-s', '--system-name',
+    dest='system_name',
+    action="store",
+    default=None,
+    help='Name of block system to be flattened.')
+
+APP_ARG_PARSER.add_argument(
+    '-l', '--model-files',
+    dest='model_files',
+    nargs='*',
+    default=[],
+    help='AR3 model files (this arguments can be repeated).')
+
+APP_ARG_PARSER.add_argument(
+    '-i', '--indic-file',
+    dest='indic_file',
+    action='store',
+    default=None,
+    help='Indicators specification file.')
+
+APP_ARG_PARSER.add_argument(
+    '-m', '--mission-file',
+    dest='mission_file',
+    action='store',
+    default=None,
+    help='Mission specification file.')
+
+
+APP_ARG_PARSER.add_argument(
+    '-a', '--ar3-tools-dir',
+    dest='ar3_tools_dir',
+    action="store",
+    default=BIN_DIR,
+    help='Directory containing AR3 tools (ar3c, gtstocmp, gtstocmp.sh and ftssto directory.')
+
+APP_ARG_PARSER.add_argument(
+    '-t', '--tmp-dir',
+    dest='tmp_dir',
+    action="store",
+    default=TMP_DIR,
+    help='Temporary dir')
+
+APP_ARG_PARSER.add_argument(
+    '-r', '--run-simu',
+    dest='run_simu',
+    action="store_true",
+    default=False,
+    help='Run simulator')
+
+APP_ARG_PARSER.add_argument(
+    '-o', '--result-filename',
+    dest='result_filename',
+    action="store",
+    default=None,
+    help='Filename to store results')
+
+# APP_ARG_PARSER.add_argument(
+#     '-P', '--db-port',
+#     dest='db_port',
+#     action='store',
+#     default=27017,
+#     help='DB port.')
+
+# APP_ARG_PARSER.add_argument(
+#     '-dd', '--drop-ds',
+#     dest='drop_data_sources',
+#     default=[],
+#     action="append",
+#     help='Regex specifying the data sources to reset. value "." reset all data sources.')
+
+APP_ARG_PARSER.add_argument(
+    '-p', '--progress',
+    dest='progress_mode',
+    action='store_true',
+    default=False,
+    help='Show progress bar in the console.')
+
+APP_ARG_PARSER.add_argument(
+    '-v', '--verbose',
+    dest='verbose_mode',
+    action='store_true',
+    default=False,
+    help='Display log information on stardard output.')
+
+APP_ARG_PARSER.add_argument(
+    '-d', '--debug',
+    dest='debug_mode',
+    action='store_true',
+    default=False,
+    help='Display debug on stardard output.')
+
+APP_INPUT_ARGS = APP_ARG_PARSER.parse_args()
+
+# Some paths
+# ----------
+APP_LOG_FILENAME = os.path.join("logs", APP_NAME_SHORT + ".log")
+APP_LOG_DIR = os.path.dirname(APP_LOG_FILENAME)
+
+# Get logger
+# ----------
+
+
+def create_logger(log_filename,
+                  verbose_mode=False,
+                  debug_mode=False):
+
+    # création de l'objet logger qui va nous servir à écrire dans les logs
+    logger = logging.getLogger()
+    for log_h in logger.handlers.copy():
+        logger.removeHandler(log_h)
+
+    if debug_mode:
+        logger.setLevel(logging.DEBUG)
+    elif verbose_mode:
+        logger.setLevel(logging.INFO)
+    else:
+        logger.propagate = False
+        return logger
+
+    # Création d'un formateur qui va ajouter le temps, le niveau
+    # de chaque message quand on écrira un message dans le log
+    formatter = logging.Formatter(
+        '%(asctime)s :: %(levelname)s :: %(message)s')
+    # création d'un handler qui va rediriger une écriture du log vers
+    # un fichier en mode 'append', avec 1 backup et une taille max de 1Mo
+    file_handler = logging.handlers.RotatingFileHandler(log_filename,
+                                                        'a', 1000000, 1)
+    # on lui met le niveau sur DEBUG, on lui dit qu'il doit utiliser le formateur
+    # créé précédement et on ajoute ce handler au logger
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # création d'un second handler qui va rediriger chaque écriture de log
+    # sur la console
+    steam_handler = logging.StreamHandler()
+    steam_handler.setFormatter(formatter)
+    logger.addHandler(steam_handler)
+
+    return logger
+
+
+if not os.path.exists(APP_LOG_DIR):
+    os.makedirs(APP_LOG_DIR)
+
+logger = create_logger(
+    APP_LOG_FILENAME,
+    verbose_mode=APP_INPUT_ARGS.verbose_mode,
+    debug_mode=APP_INPUT_ARGS.debug_mode)
+
+# ------------------ #
+
+
+# Create tmp directory
+tmp_dir = APP_INPUT_ARGS.tmp_dir
+pathlib.Path(tmp_dir).mkdir(exist_ok=True)
+
+# Flatten model (if needed)
+# -------------------------
+if len(APP_INPUT_ARGS.model_files) > 0:
+    ar3c_cmd = [os.path.join(APP_INPUT_ARGS.ar3_tools_dir, "ar3c")]
+    if APP_INPUT_ARGS.verbose_mode:
+        ar3c_cmd.append("--verbose")
+
+    if not(APP_INPUT_ARGS.system_name is None):
+        ar3c_cmd.append("--main-element")
+        ar3c_cmd.append(APP_INPUT_ARGS.system_name)
+
+    ar3c_cmd.append("--gts-xml")
+    ar3c_cmd.append(os.path.join(tmp_dir, "model.xml"))
+
+    alt_files = []
+    for f in APP_INPUT_ARGS.model_files:
+        alt_files += glob.glob(f)
+
+    ar3c_cmd += list(set(alt_files))
+
+    logger.info(f'Flatten model: {" ".join(ar3c_cmd)}')
+    logger.info(APP_INPUT_ARGS.ar3_tools_dir)
+    #cmd_result = subprocess.run(ar3c_cmd, cwd=BIN_DIR)
+    cmd_result = subprocess.run(ar3c_cmd)
+
+    if cmd_result.returncode != 0:
+        sys.exit(cmd_result.returncode)
+
+# Generate simulator
+# ------------------
+gen_simu_cmd = [os.path.join(APP_INPUT_ARGS.ar3_tools_dir, "gtsstocmp.sh")]
+# if APP_INPUT_ARGS.verbose_mode:
+#     gen_simu_cmd.append("--trace")
+
+gen_simu_cmd.append(APP_INPUT_ARGS.ar3_tools_dir)
+
+gen_simu_cmd.append(os.path.join(tmp_dir, "model.xml"))
+
+if APP_INPUT_ARGS.indic_file is None:
+    gen_simu_cmd.append(os.path.join(tmp_dir, "simu.idf"))
+else:
+    gen_simu_cmd.append(os.path.join(CWD_DIR, APP_INPUT_ARGS.indic_file))
+
+gen_simu_cmd.append(os.path.join(tmp_dir, "simu"))
+
+
+logger.info(f'Generate simulator: {" ".join(gen_simu_cmd)}')
+# Create gtssto/tmp directory if not exists
+gtssto_tmp_dir = os.path.join(APP_INPUT_ARGS.ar3_tools_dir, "gtssto", "tmp")
+pathlib.Path(gtssto_tmp_dir).mkdir(exist_ok=True)
+# Create gtssto/bin directory if not exists
+gtssto_bin_dir = os.path.join(APP_INPUT_ARGS.ar3_tools_dir, "gtssto", "bin")
+pathlib.Path(gtssto_bin_dir).mkdir(exist_ok=True)
+
+#cmd_result = subprocess.run(gen_simu_cmd, cwd=BIN_DIR)
+cmd_result = subprocess.run(gen_simu_cmd)
+if cmd_result.returncode != 0:
+    sys.exit(cmd_result.returncode)
+
+
+if APP_INPUT_ARGS.run_simu:
+    run_simu_cmd = [os.path.join(tmp_dir, "simu")]
+
+    if APP_INPUT_ARGS.progress_mode:
+        run_simu_cmd.append("--progress")
+
+    if APP_INPUT_ARGS.mission_file is None:
+        run_simu_cmd.append(os.path.join("simu.mdf"))
+    else:
+        run_simu_cmd.append(os.path.join(CWD_DIR, APP_INPUT_ARGS.mission_file))
+
+    logger.info(f'Run simulator: {" ".join(run_simu_cmd)}')
+    #cmd_result = subprocess.run(run_simu_cmd, cwd=tmp_dir)
+    cmd_result = subprocess.run(run_simu_cmd)
+
+    if cmd_result.returncode != 0:
+        sys.exit(cmd_result.returncode)
+
+    # print(APP_INPUT_ARGS.result_filename)
+    # if APP_INPUT_ARGS.result_filename is None:
+    #     results_dir = pathlib.Path(
+    #         APP_INPUT_ARGS.result_filename).parent.absolute()
+    #     results_ori_filename = os.path.join(tmp_dir, 'results.csv')
+    #     shutil.copy(results_ori_filename, results_dir)
+    #     os.rename(os.path.join(results_dir, "results.csv"),
+    #               APP_INPUT_ARGS.result_filename)
+# gtssto_cmp_tmp_dir = os.path.join(BIN_DIR, "gtssto", "tmp")
+
+# # Copy simulator source code in compilator tmp dir
+# gtssto_src_base = "STOModel"
+# for ext in ["cpp", "hpp"]:
+#     shutil.move(os.path.join(tmp_dir, ".".join([gtssto_src_base, ext])),
+#                 os.path.join(gtssto_cmp_tmp_dir, ".".join([gtssto_src_base, ext])))
+
+sys.exit(0)

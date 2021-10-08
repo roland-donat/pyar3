@@ -22,12 +22,21 @@ Simply execute :
 `pip install git+https://github.com/roland-donat/pyar3`
 
 
-## Script `ar3sto2xls`
+## Scripts
 
-Installing `pyar3` package make the script `ar3sto2xls` available in your system path (at least on Linux).
+Installing `pyar3` package makes some scripts available in your system path (at least on Linux).
+
+### `ar3sto2xls`
 
 This tool aims to convert stochastic simulator raw result csv file into Excel file with one tab for
 each requested indicator.
 
 If you have a raw result file named `results.csv`, execute : `ar3sto2xls results.csv`. This will
 produce a file `result.xlsx` next to `results.csv`.
+
+### Script `ar3simu`
+
+`ar3simu` is a Python script aiming at lauching the AR3 stochastic simulator more easily.
+
+
+TODO

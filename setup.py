@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-VERSION = "0.0.4"
+VERSION = "0.0.5"
 
 setup(name='pyar3',
       version=VERSION,
@@ -43,5 +43,8 @@ setup(name='pyar3',
           "lxml==4.6.3",
       ],
       zip_safe=False,
-      scripts=['bin/ar3sto2xls'],
+      scripts=[
+          'bin/ar3sto2xls',
+          'bin/ar3simu',
+      ],
       )
