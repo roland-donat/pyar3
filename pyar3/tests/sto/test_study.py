@@ -14,7 +14,15 @@ pathlib.Path(DATA_PATH).mkdir(parents=True, exist_ok=True)
 pathlib.Path(EXPECTED_PATH).mkdir(parents=True, exist_ok=True)
 
 
-def test_study_load():
+def test_study_load_001():
+
+    study_filename = os.path.join(DATA_PATH,
+                                  "study_1.yaml")
+
+    study = pyar3.STOStudy.from_yaml(study_filename)
+
+
+def test_study_idf_mdf_001():
 
     study_filename = os.path.join(DATA_PATH,
                                   "study_1.yaml")
@@ -28,6 +36,21 @@ def test_study_load():
                                 "study_1.mdf")
     study.to_mdf(mdf_filename)
 
-    print(study)
+    assert True
+
+
+def test_study_idf_mdf_002():
+
+    study_filename = os.path.join(DATA_PATH,
+                                  "study_2.yaml")
+
+    study = pyar3.STOStudy.from_yaml(study_filename)
+
+    idf_filename = os.path.join(EXPECTED_PATH,
+                                "study_2.idf")
+    study.to_idf(idf_filename)
+    mdf_filename = os.path.join(EXPECTED_PATH,
+                                "study_2.mdf")
+    study.to_mdf(mdf_filename)
 
     assert True

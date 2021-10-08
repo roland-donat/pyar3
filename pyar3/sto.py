@@ -308,7 +308,7 @@ class STOStudy(pydantic.BaseModel):
         idf_root = etree.Element('ar3ccp')
 
         observers = {}
-
+        print(self)
         for indic in self.indicators:
 
             if not(indic.observer in observers.keys()):
@@ -332,7 +332,10 @@ class STOStudy(pydantic.BaseModel):
         idf_tree = etree.ElementTree(idf_root)
 
         # Header required ? # <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-        idf_tree.write(filename, pretty_print=True)
+        idf_tree.write(filename,
+                       pretty_print=True,
+                       xml_declaration=True,
+                       encoding="utf-8")
 
     def to_mdf(self, filename, result_filename=None):
 
@@ -361,4 +364,7 @@ class STOStudy(pydantic.BaseModel):
         # Header required ?
         # <?xml version="1.0" ?>
         # <!DOCTYPE ar3ccp>
-        mdf_tree.write(filename, pretty_print=True)
+        mdf_tree.write(filename,
+                       pretty_print=True,
+                       xml_declaration=True,
+                       encoding="utf-8")

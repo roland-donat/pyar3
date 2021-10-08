@@ -1,0 +1,49 @@
+description: I am proud of my second
+indicators:
+- measure: has-value
+  observer: station_A_elec
+  stats:
+  - mean
+  - standard-deviation
+  - confidence-range
+  type: Boolean
+  value: true
+- measure: had-value
+  observer: station_A_elec
+  stats:
+  - mean
+  - standard-deviation
+  - confidence-range
+  type: Boolean
+  value: true
+- measure: has-value
+  observer: station_B_elec
+  stats:
+  - mean
+  - standard-deviation
+  type: Boolean
+- measure: had-value
+  observer: station_B_elec
+  stats:
+  - mean
+  type: Boolean
+- measure: has-value
+  observer: station_A_elec
+  stats:
+  - standard-deviation
+  type: Boolean
+  value: true
+- measure: has-value
+  observer: station_A_elec
+  stats: []
+  type: Boolean
+  value: false
+main_block: test_flux_train
+name: Second studysd
+simu_params:
+  nb_runs: 1000
+  result_filename: second_study.csv
+  schedule_from: 10
+  schedule_step: 14
+  schedule_to: 500
+  seed: 5000
