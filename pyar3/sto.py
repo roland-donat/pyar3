@@ -3,6 +3,7 @@ import typing
 import pydantic
 import pkg_resources
 import yaml
+import uuid
 from lxml import etree
 
 import logging
@@ -23,11 +24,15 @@ def is_float(value):
 
 
 class SimIndicator(pydantic.BaseModel):
-    name: str = pydantic.Field(None, description="Indicator name")
+    id: str = pydantic.Field(None, description="Indicator unique id")
+    name: str = pydantic.Field(None, description="Indicator short name")
+    description: str = pydantic.Field(
+        None, description="Indicator description")
 
 
 class STOIndicator(SimIndicator):
     observer: str = pydantic.Field(None, description="AR3 observer name")
+    block: str = pydantic.Field(None, description="AR3 observer block name")
     type: str = pydantic.Field(None, description="Indicator type")
     measure: str = pydantic.Field(None, description="Measure")
     value: str = pydantic.Field(
@@ -38,6 +43,9 @@ class STOIndicator(SimIndicator):
 
     @pydantic.root_validator()
     def cls_validator(cls, obj):
+        if obj.get('id') is None:
+            obj['id'] = str(uuid.uuid4())
+
         if obj.get('name') is None:
             obj['name'] = f"{obj.get('observer', '')}__{obj.get('measure', '')}"
 
@@ -198,6 +206,11 @@ class STOStudyResults(pydantic.BaseModel):
         cls_specs["mission"] = STOMissionResult.from_raw_lines(raw_lines)
         cls_specs["indicators"] = cls.indicators_from_raw_lines(raw_lines)
 
+        # Update indicator block information
+        for indic_id, indic in cls_specs["indicators"].items():
+            if not(cls_specs["meta_data"].main_block is None):
+                indic.block = cls_specs["meta_data"].main_block
+
         obj = cls(**cls_specs)
 
         return obj
@@ -224,22 +237,24 @@ class STOStudyResults(pydantic.BaseModel):
                 start = i + 1
                 break
 
-            indic_name = line_split[0].strip()
-            indics_dict[indic_name] = \
-                STOIndicator(name=indic_name,
-                             observer=line_split[1].strip())
+            indic_id = line_split[0].strip()
+            indics_dict[indic_id] = \
+                STOIndicator(
+                    id=indic_id,
+                    name=indic_id,
+                    observer=line_split[1].strip())
 
-        indic_name = None
+        indic_id = None
         indic_data_lines = indic_def_lines[start:]
         for i, line in enumerate(indic_data_lines):
 
             line_split = line.strip().split("\t")
 
             if line_split[0] == "Indicator":
-                indic_name = line_split[1]
-                indics_dict[indic_name].data = []
+                indic_id = line_split[1]
+                indics_dict[indic_id].data = []
 
-            elif is_float(line_split[0]) and not(indic_name is None):
+            elif is_float(line_split[0]) and not(indic_id is None):
 
                 data_cur = dict(
                     date=float(line_split[0]),
@@ -250,12 +265,12 @@ class STOStudyResults(pydantic.BaseModel):
                     if len(line_split) >= 4 else float("NaN")
                 )
 
-                indics_dict[indic_name].data.append(data_cur)
+                indics_dict[indic_id].data.append(data_cur)
 
-            # indics_dict[indic_name]
-        for indic_name in indics_dict:
-            indics_dict[indic_name].data = \
-                pd.DataFrame(indics_dict[indic_name].data)
+            # indics_dict[indic_id]
+        for indic_id in indics_dict:
+            indics_dict[indic_id].data = \
+                pd.DataFrame(indics_dict[indic_id].data)
 
         return indics_dict
 
@@ -263,9 +278,9 @@ class STOStudyResults(pydantic.BaseModel):
 
         writer = pd.ExcelWriter(filename, engine='xlsxwriter')
 
-        for indic_name, indic in self.indicators.items():
+        for indic_id, indic in self.indicators.items():
             indic.data.to_excel(writer,
-                                sheet_name=indic_name,
+                                sheet_name=indic_id,
                                 index=False)
 
         writer.save()
@@ -320,7 +335,7 @@ class STOStudy(pydantic.BaseModel):
             indic_elt = \
                 etree.SubElement(observers[indic.observer],
                                  "indicator")
-            indic_elt.set('name', indic.name)
+            indic_elt.set('name', indic.id)
             indic_elt.set('type', indic.measure)
             indic_elt.set('value', indic.value)
 

@@ -134,8 +134,17 @@ APP_INPUT_ARGS = APP_ARG_PARSER.parse_args()
 APP_LOG_FILENAME = os.path.join("logs", APP_NAME_SHORT + ".log")
 APP_LOG_DIR = os.path.dirname(APP_LOG_FILENAME)
 
-# Get logger
-# ----------
+# Utility function
+# ----------------
+
+# WARNING: WE HAVE PROBLEM TO DEAL WITH PATH WITH SPACES
+# QUOTING PATH DOESN'T SEEM TO WORK
+# SO QUOTE_STR FUN IS INHIBATED FOR NOW
+
+
+def quote_str(s):
+    # return f'"{s}"'
+    return s
 
 
 def create_logger(log_filename,
@@ -214,7 +223,7 @@ if len(APP_INPUT_ARGS.model_files) > 0:
 
     logger.info(f'Flatten model: {" ".join(ar3c_cmd)}')
     logger.info(APP_INPUT_ARGS.ar3_tools_dir)
-    #cmd_result = subprocess.run(ar3c_cmd, cwd=BIN_DIR)
+    # cmd_result = subprocess.run(ar3c_cmd, cwd=BIN_DIR)
     cmd_result = subprocess.run(ar3c_cmd)
 
     if cmd_result.returncode != 0:
@@ -222,20 +231,22 @@ if len(APP_INPUT_ARGS.model_files) > 0:
 
 # Generate simulator
 # ------------------
-gen_simu_cmd = [os.path.join(APP_INPUT_ARGS.ar3_tools_dir, "gtsstocmp.sh")]
+gen_simu_cmd = [os.path.join(
+    APP_INPUT_ARGS.ar3_tools_dir, "gtsstocmp.sh")]
 # if APP_INPUT_ARGS.verbose_mode:
 #     gen_simu_cmd.append("--trace")
 
-gen_simu_cmd.append(APP_INPUT_ARGS.ar3_tools_dir)
+gen_simu_cmd.append(quote_str(APP_INPUT_ARGS.ar3_tools_dir))
 
-gen_simu_cmd.append(os.path.join(tmp_dir, "model.xml"))
+gen_simu_cmd.append(quote_str(os.path.join(tmp_dir, "model.xml")))
 
 if APP_INPUT_ARGS.indic_file is None:
-    gen_simu_cmd.append(os.path.join(tmp_dir, "simu.idf"))
+    gen_simu_cmd.append(quote_str(os.path.join(tmp_dir, "simu.idf")))
 else:
-    gen_simu_cmd.append(os.path.join(CWD_DIR, APP_INPUT_ARGS.indic_file))
+    gen_simu_cmd.append(quote_str(os.path.join(
+        CWD_DIR, APP_INPUT_ARGS.indic_file)))
 
-gen_simu_cmd.append(os.path.join(tmp_dir, "simu"))
+gen_simu_cmd.append(quote_str(os.path.join(tmp_dir, "simu")))
 
 
 logger.info(f'Generate simulator: {" ".join(gen_simu_cmd)}')
@@ -246,11 +257,11 @@ pathlib.Path(gtssto_tmp_dir).mkdir(exist_ok=True)
 gtssto_bin_dir = os.path.join(APP_INPUT_ARGS.ar3_tools_dir, "gtssto", "bin")
 pathlib.Path(gtssto_bin_dir).mkdir(exist_ok=True)
 
-#cmd_result = subprocess.run(gen_simu_cmd, cwd=BIN_DIR)
-cmd_result = subprocess.run(gen_simu_cmd)
+# cmd_result = subprocess.run(gen_simu_cmd, cwd=BIN_DIR)
+cmd_result = subprocess.run(gen_simu_cmd, shell=False)
 if cmd_result.returncode != 0:
+    logger.info("Simulator generation problem")
     sys.exit(cmd_result.returncode)
-
 
 if APP_INPUT_ARGS.run_simu:
     run_simu_cmd = [os.path.join(tmp_dir, "simu")]
@@ -264,7 +275,7 @@ if APP_INPUT_ARGS.run_simu:
         run_simu_cmd.append(os.path.join(CWD_DIR, APP_INPUT_ARGS.mission_file))
 
     logger.info(f'Run simulator: {" ".join(run_simu_cmd)}')
-    #cmd_result = subprocess.run(run_simu_cmd, cwd=tmp_dir)
+    # cmd_result = subprocess.run(run_simu_cmd, cwd=tmp_dir)
     cmd_result = subprocess.run(run_simu_cmd)
 
     if cmd_result.returncode != 0:

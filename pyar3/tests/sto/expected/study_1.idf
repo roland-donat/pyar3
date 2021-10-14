@@ -1,22 +1,23 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <ar3ccp>
   <calculation observer="obs_1">
-    <indicator name="obs_1__has-value" type="has-value" value="true">
+    <indicator name="b47c83b5-81d2-443b-be10-a35cfd7665b3" type="has-value" value="true">
       <mean/>
       <standard-deviation/>
       <confidence-range/>
     </indicator>
-    <indicator name="obs_1__had-value" type="had-value" value="true">
+    <indicator name="4f3da35b-b3e2-4b80-b8f7-38c98c4346e2" type="had-value" value="true">
       <mean/>
       <standard-deviation/>
       <confidence-range/>
     </indicator>
   </calculation>
   <calculation observer="obs_2">
-    <indicator name="obs_2__has-value" type="has-value" value="true">
+    <indicator name="b02376a9-2abd-438e-a113-beb15f0ccb52" type="has-value" value="true">
       <mean/>
       <standard-deviation/>
     </indicator>
-    <indicator name="obs_2__had-value" type="had-value" value="true">
+    <indicator name="8fa9ef80-66c4-4527-a2ce-7644b5999c23" type="had-value" value="true">
       <mean/>
     </indicator>
   </calculation>
