@@ -318,6 +318,12 @@ class STOStudy(pydantic.BaseModel):
 
         return obj
 
+    def get_indicator_from_id(self, id):
+        for indic in self.indicators:
+            if indic.id == id:
+                return indic
+        return None
+
     def to_idf(self, filename):
 
         idf_root = etree.Element('ar3ccp')
