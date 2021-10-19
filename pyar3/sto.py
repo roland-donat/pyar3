@@ -28,6 +28,7 @@ class SimIndicator(pydantic.BaseModel):
     name: str = pydantic.Field(None, description="Indicator short name")
     description: str = pydantic.Field(
         None, description="Indicator description")
+    unit: str = pydantic.Field(None, description="Indicator unit")
 
 
 class STOIndicator(SimIndicator):
@@ -48,6 +49,9 @@ class STOIndicator(SimIndicator):
 
         if obj.get('name') is None:
             obj['name'] = f"{obj.get('observer', '')}__{obj.get('measure', '')}"
+
+        if obj.get('description') is None:
+            obj['description'] = obj['name']
 
         if obj.get('type') == "Boolean":
             if not(obj.get('value') in ["true", "false"]):
@@ -106,6 +110,10 @@ class STOSimulationParam(pydantic.BaseModel):
     seed: int = pydantic.Field(1234, description="Simulator seed")
     result_filename: str = pydantic.Field(
         "result.csv", description="Result filename")
+    schedule_name: str = pydantic.Field(
+        "Date", description="Result filename")
+    schedule_unit: str = pydantic.Field(
+        None, description="Result filename")
     schedule_from: float = pydantic.Field(...,
                                           description="Simulation schedule origin")
     schedule_to: float = pydantic.Field(...,
