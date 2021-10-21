@@ -1,23 +1,23 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <ar3ccp>
   <calculation observer="obs_1">
-    <indicator name="463988cc-a8ef-4062-9196-137aaddf4c7c" type="has-value" value="true">
+    <indicator name="84634b59-4065-4d5e-ad4f-026914761c7a" type="has-value" value="true">
       <mean/>
       <standard-deviation/>
       <confidence-range/>
     </indicator>
-    <indicator name="fe9b624c-6ddd-4a23-960f-c4f1ff7b8e8a" type="had-value" value="true">
+    <indicator name="c4ec0072-20cf-4c24-98dc-9985c254146c" type="had-value" value="true">
       <mean/>
       <standard-deviation/>
       <confidence-range/>
     </indicator>
   </calculation>
   <calculation observer="obs_2">
-    <indicator name="bbbdece5-9d27-40f0-9be2-21ec1b378543" type="has-value" value="true">
+    <indicator name="329ba924-bc24-4fee-94ba-f9feb451676d" type="has-value" value="true">
       <mean/>
       <standard-deviation/>
     </indicator>
-    <indicator name="535ac385-9550-4200-a61d-eef8b517211d" type="had-value" value="true">
+    <indicator name="7cb04ab1-98fd-43f1-a2f8-65a92ea08c91" type="had-value" value="true">
       <mean/>
     </indicator>
   </calculation>

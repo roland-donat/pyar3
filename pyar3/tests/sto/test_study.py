@@ -53,4 +53,6 @@ def test_study_idf_mdf_002():
                                 "study_2.mdf")
     study.to_mdf(mdf_filename)
 
+    print(study.indicators)
+
     assert True

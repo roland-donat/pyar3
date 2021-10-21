@@ -36,6 +36,7 @@ indicators:
 - measure: has-value
   observer: station_A_elec
   stats: []
+  unit: "%"
   type: Boolean
   value: false
 main_block: test_flux_train
@@ -43,6 +44,8 @@ name: Second studysd
 simu_params:
   nb_runs: 1000
   result_filename: second_study.csv
+  schedule_name: "Time"
+  schedule_unit: "h"
   schedule_from: 10
   schedule_step: 14
   schedule_to: 500

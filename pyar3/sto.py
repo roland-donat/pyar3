@@ -54,7 +54,9 @@ class STOIndicator(SimIndicator):
             obj['description'] = obj['name']
 
         if obj.get('type') == "Boolean":
-            if not(obj.get('value') in ["true", "false"]):
+            if obj.get('value') in [True, False, "true", "false", "True", "False"]:
+                obj['value'] = str(obj.get('value')).lower()
+            else:
                 obj['value'] = "true"
 
         return obj
