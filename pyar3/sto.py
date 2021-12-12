@@ -5,6 +5,10 @@ import pkg_resources
 import yaml
 import uuid
 from lxml import etree
+import subprocess
+import os
+import pathlib
+import time
 
 import logging
 
@@ -13,6 +17,9 @@ if 'ipdb' in installed_pkg:
     import ipdb  # noqa: 401
 
 PandasDataFrame = typing.TypeVar('pd.core.dataframe')
+
+AR3SIMU_LOCAL_CONFIG_FILENAME = os.path.join(str(pathlib.Path.home()),
+                                             ".ar3simu.conf")
 
 
 def is_float(value):
@@ -339,7 +346,6 @@ class STOStudy(pydantic.BaseModel):
         idf_root = etree.Element('ar3ccp')
 
         observers = {}
-        print(self)
         for indic in self.indicators:
 
             if not(indic.observer in observers.keys()):
@@ -399,3 +405,75 @@ class STOStudy(pydantic.BaseModel):
                        pretty_print=True,
                        xml_declaration=True,
                        encoding="utf-8")
+
+    def run_simu(self, path="."):
+
+        with open(AR3SIMU_LOCAL_CONFIG_FILENAME, 'r', encoding="utf-8") as yaml_file:
+            try:
+                ar3_local_config = yaml.load(yaml_file,
+                                             Loader=yaml.FullLoader)
+
+            except yaml.YAMLError as exc:
+                print(exc)
+                logging.error(exc)
+
+        study_alt_filename = os.path.join(
+            path, f"{self.main_block}.alt")
+
+        study_idf_filename = os.path.join(
+            path, f"{self.main_block}.idf")
+
+        study_mdf_filename = os.path.join(
+            path, f"{self.main_block}.mdf")
+
+        study_result_filename = os.path.join(
+            path, f"{self.main_block}.csv")
+
+        self.simu_params.result_filename = study_result_filename
+        self.to_idf(study_idf_filename)
+        self.to_mdf(study_mdf_filename)
+
+        # study_alt_filename = app_bknd.blocks[app_bknd.study.main_block]\
+        #                              .filename\
+        #                              .replace(app_bknd.project_folder, "")\
+        #                              .strip(os.path.sep)
+
+        args = ['ar3simu',
+                '-v',
+                '-p',
+                '-a', ar3_local_config.get("ar3bin_folder", "."),
+                '-s', self.main_block,
+                '-l', study_alt_filename,
+                '-i', study_idf_filename,
+                '-m', study_mdf_filename,
+                #            "-o", csvFilePath,
+                "-r"]
+
+        print(" ".join(args))
+        with open("stdout.txt", "w") as out:
+            currentProcess = subprocess.Popen(args, cwd=".",
+                                              stdout=out, stderr=out)
+
+            returnCode = currentProcess.poll()
+
+            while returnCode is None:
+                time.sleep(2)
+                returnCode = currentProcess.poll()
+                continue
+
+            returnCode = currentProcess.poll()
+
+            ipdb.set_trace()
+
+            if returnCode == 0:
+                study_res = \
+                    pyar3.STOStudyResults.from_result_csv(
+                        study_result_filename)
+
+                # out.write(app_bknd.study_res)
+                out.write("Simulation completed")
+
+            else:
+                out.write("Simulation failed")
+
+        ipdb.set_trace()
