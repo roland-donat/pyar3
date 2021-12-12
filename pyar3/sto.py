@@ -8,7 +8,7 @@ from lxml import etree
 import subprocess
 import os
 import pathlib
-import time
+import sys
 
 import logging
 
@@ -20,6 +20,18 @@ PandasDataFrame = typing.TypeVar('pd.core.dataframe')
 
 AR3SIMU_LOCAL_CONFIG_FILENAME = os.path.join(str(pathlib.Path.home()),
                                              ".ar3simu.conf")
+# Utility functions
+# -----------------
+
+
+def find_directory(dirname=None, of_file=None, root='.'):
+    for path, dirs, files in os.walk(root):
+        if not(dirname is None) and (dirname in dirs):
+            return os.path.join(path, dirname)
+        elif not(of_file is None) and (of_file in files):
+            return path
+
+    return None
 
 
 def is_float(value):
@@ -406,16 +418,54 @@ class STOStudy(pydantic.BaseModel):
                        xml_declaration=True,
                        encoding="utf-8")
 
-    def run_simu(self, path="."):
+    def get_stosim_config(self, logging=None):
+        local_config_filename = AR3SIMU_LOCAL_CONFIG_FILENAME
+        local_config_file = pathlib.Path(local_config_filename)
+
+        if not(local_config_file.is_file()):
+            ar3simu_bin_dir = \
+                find_directory(of_file="gtsstocmp.sh",
+                               root=str(pathlib.Path.home()))
+
+            if not(ar3simu_bin_dir is None):
+                if not(logging is None):
+                    logging.info(
+                        f"AR3 simulator binary found at {ar3simu_bin_dir}")
+                    logging.info(
+                        f"Configuration saved in file {local_config_filename}")
+
+                with open(local_config_filename, 'w', encoding="utf-8") \
+                        as yaml_file:
+                    try:
+                        ar3_config = yaml.dump(
+                            {"ar3bin_folder": ar3simu_bin_dir},
+                            yaml_file)
+
+                    except yaml.YAMLError as exc:
+                        print(exc)
+                        logging.error(exc)
+            else:
+                if not(logging is None):
+                    logging.error(
+                        f"Configuration file {local_config_filename} not found, "
+                        f"please create it specifying the ar3config_folder attribute")
+
+                sys.exit(1)
 
         with open(AR3SIMU_LOCAL_CONFIG_FILENAME, 'r', encoding="utf-8") as yaml_file:
             try:
-                ar3_local_config = yaml.load(yaml_file,
-                                             Loader=yaml.FullLoader)
+                stosim_local_config = yaml.load(yaml_file,
+                                                Loader=yaml.FullLoader)
 
             except yaml.YAMLError as exc:
-                print(exc)
-                logging.error(exc)
+                if not(logging is None):
+                    logging.error(exc)
+
+        return stosim_local_config
+
+    def run_simu(self, path=".", logging=None):
+
+        stosim_local_config = self.get_stosim_config(logging=logging)
 
         study_alt_filename = os.path.join(
             path, f"{self.main_block}.alt")
@@ -441,7 +491,7 @@ class STOStudy(pydantic.BaseModel):
         args = ['ar3simu',
                 '-v',
                 '-p',
-                '-a', ar3_local_config.get("ar3bin_folder", "."),
+                '-a', stosim_local_config.get("ar3bin_folder", "."),
                 '-s', self.main_block,
                 '-l', study_alt_filename,
                 '-i', study_idf_filename,
@@ -449,31 +499,30 @@ class STOStudy(pydantic.BaseModel):
                 #            "-o", csvFilePath,
                 "-r"]
 
-        print(" ".join(args))
-        with open("stdout.txt", "w") as out:
-            currentProcess = subprocess.Popen(args, cwd=".",
-                                              stdout=out, stderr=out)
+        logging.info(" ".join(args))
+        currentProcess = subprocess.Popen(args, cwd=".",
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE)
 
+        returnCode = currentProcess.poll()
+
+        while returnCode is None:
             returnCode = currentProcess.poll()
+            out = currentProcess.stdout.readline().decode("utf-8")
+            sys.stdout.write(out)
 
-            while returnCode is None:
-                time.sleep(2)
-                returnCode = currentProcess.poll()
-                continue
+        returnCode = currentProcess.poll()
 
-            returnCode = currentProcess.poll()
+        study_res = None
+        if returnCode == 0:
+            study_res = \
+                STOStudyResults.from_result_csv(
+                    study_result_filename)
 
-            ipdb.set_trace()
+            # out.write(app_bknd.study_res)
+            logging.info("Simulation completed")
 
-            if returnCode == 0:
-                study_res = \
-                    pyar3.STOStudyResults.from_result_csv(
-                        study_result_filename)
+        else:
+            logging.info("Simulation failed")
 
-                # out.write(app_bknd.study_res)
-                out.write("Simulation completed")
-
-            else:
-                out.write("Simulation failed")
-
-        ipdb.set_trace()
+        return study_res
