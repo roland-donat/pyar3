@@ -9,6 +9,7 @@ import subprocess
 import os
 import pathlib
 import sys
+import math
 
 import logging
 
@@ -267,11 +268,18 @@ class STOStudyResults(pydantic.BaseModel):
                 break
 
             indic_id = line_split[0].strip()
+            observer = line_split[1].strip()
+            # TODO: TO BE IMPROVED BUT NEED MORE TETS
+            # value = line_split[2].strip()
+            # measure = line_split[3].strip()
             indics_dict[indic_id] = \
                 STOIndicator(
                     id=indic_id,
                     name=indic_id,
-                    observer=line_split[1].strip())
+                    observer=observer)
+            # value=value,
+            # type="Boolean" if value in ["true", "false"] else "Real",
+            # measure=measure)
 
         indic_id = None
         indic_data_lines = indic_def_lines[start:]
@@ -293,6 +301,10 @@ class STOStudyResults(pydantic.BaseModel):
                     std=float(line_split[3])
                     if len(line_split) >= 4 else float("NaN")
                 )
+                # Compute IC95%
+                if "std" in data_cur.keys():
+                    data_cur["ic95"] = 1.96*data_cur["std"] / \
+                        math.sqrt(data_cur["sample_size"])
 
                 indics_dict[indic_id].data.append(data_cur)
 
@@ -519,6 +531,8 @@ class STOStudy(pydantic.BaseModel):
                 STOStudyResults.from_result_csv(
                     study_result_filename)
 
+            for indic in self.indicators:
+                indic.data = study_res.indicators[indic.id].data.copy()
             # out.write(app_bknd.study_res)
             logging.info("Simulation completed")
 
