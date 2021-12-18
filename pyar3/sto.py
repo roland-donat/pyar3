@@ -78,6 +78,8 @@ class STOIndicator(SimIndicator):
                 obj['value'] = str(obj.get('value')).lower()
             else:
                 obj['value'] = "true"
+        else:
+            obj['value'] = ''
 
         return obj
 
@@ -520,6 +522,7 @@ class STOStudy(pydantic.BaseModel):
 
         while returnCode is None:
             returnCode = currentProcess.poll()
+            print(currentProcess.stdout.readline())
             out = currentProcess.stdout.readline().decode("utf-8")
             sys.stdout.write(out)
 
