@@ -49,6 +49,8 @@ class SimIndicator(pydantic.BaseModel):
     description: str = pydantic.Field(
         None, description="Indicator description")
     unit: str = pydantic.Field(None, description="Indicator unit")
+    tags: typing.List[str] = pydantic.Field(
+        [], description="List of tags to provide indicator metadata")
 
 
 class STOIndicator(SimIndicator):
