@@ -81,7 +81,7 @@ class STOIndicator(SimIndicator):
             else:
                 obj['value'] = "true"
         else:
-            obj['value'] = ''
+            obj['value'] = 'non applicable'
 
         return obj
 
