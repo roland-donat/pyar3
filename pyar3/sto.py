@@ -52,6 +52,19 @@ class SimIndicator(pydantic.BaseModel):
     tags: typing.List[str] = pydantic.Field(
         [], description="List of tags to provide indicator metadata")
 
+    def has_tag(self, tag):
+        return any([tag == t for t in self.tags])
+
+    def get_tag_value(self, tag_name, defaut=None):
+        if tag_name[-1] != ":":
+            tag_name += ":"
+
+        tag_sel = [t for t in self.tags if t.startswith(tag_name)]
+        if len(tag_sel) == 0:
+            return None
+        else:
+            return tag_sel[0].replace(tag_name, "")
+
 
 class STOIndicator(SimIndicator):
     observer: str = pydantic.Field(None, description="AR3 observer name")
