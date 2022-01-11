@@ -153,11 +153,11 @@ class STOSimulationParam(pydantic.BaseModel):
         "Date", description="Result filename")
     schedule_unit: str = pydantic.Field(
         None, description="Result filename")
-    schedule_from: float = pydantic.Field(...,
+    schedule_from: float = pydantic.Field(None,
                                           description="Simulation schedule origin")
     schedule_to: float = pydantic.Field(...,
                                         description="Simulation schedule end")
-    schedule_step: float = pydantic.Field(...,
+    schedule_step: float = pydantic.Field(None,
                                           description="Simulation schedule step")
 
 
@@ -432,10 +432,11 @@ class STOStudy(pydantic.BaseModel):
         schedule_elt = etree.SubElement(simu_elt, "schedule")
         schedule_elt.set('mission-time', str(mission_time))
 
-        range_elt = etree.SubElement(schedule_elt, "range")
-        range_elt.set('step', str(self.simu_params.schedule_step))
-        range_elt.set('from', str(self.simu_params.schedule_from))
-        range_elt.set('to', str(self.simu_params.schedule_to))
+        if self.simu_params.schedule_step:
+            range_elt = etree.SubElement(schedule_elt, "range")
+            range_elt.set('step', str(self.simu_params.schedule_step))
+            range_elt.set('from', str(self.simu_params.schedule_from))
+            range_elt.set('to', str(self.simu_params.schedule_to))
 
         mdf_tree = etree.ElementTree(mdf_root)
 
