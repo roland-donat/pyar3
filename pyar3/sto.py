@@ -10,6 +10,7 @@ import os
 import pathlib
 import sys
 import math
+import colored
 
 import logging
 
@@ -538,12 +539,10 @@ class STOStudy(pydantic.BaseModel):
 
         while returnCode is None:
             returnCode = currentProcess.poll()
-            print(currentProcess.stdout.readline())
             out = currentProcess.stdout.readline().decode("utf-8")
             sys.stdout.write(out)
 
         returnCode = currentProcess.poll()
-
         study_res = None
         if returnCode == 0:
             study_res = \
@@ -553,9 +552,15 @@ class STOStudy(pydantic.BaseModel):
             for indic in self.indicators:
                 indic.data = study_res.indicators[indic.id].data.copy()
             # out.write(app_bknd.study_res)
-            logging.info("Simulation completed")
+            log_msg = colored.stylize(
+                "Simulation completed",
+                colored.fg("green") + colored.attr("bold"))
+            logging.info(log_msg)
 
         else:
-            logging.info("Simulation failed")
+            log_msg = colored.stylize(
+                "Simulation failed",
+                colored.fg("red") + colored.attr("bold"))
+            logging.info(log_msg)
 
         return study_res

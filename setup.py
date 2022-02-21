@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-VERSION = "0.0.17"
+VERSION = "0.0.18"
 
 setup(name='pyar3',
       version=VERSION,
@@ -41,6 +41,7 @@ setup(name='pyar3',
           "pydantic==1.8.2",
           "xlsxwriter==3.0.1",
           "lxml==4.6.3",
+          "colored==1.4.3",
       ],
       zip_safe=False,
       scripts=[
