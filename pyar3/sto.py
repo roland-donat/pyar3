@@ -26,14 +26,29 @@ AR3SIMU_LOCAL_CONFIG_FILENAME = os.path.join(str(pathlib.Path.home()),
 # -----------------
 
 
-def find_directory(dirname=None, of_file=None, root='.'):
+def find_directory(dirname=None, of_file=None, root='.', smart_search=True):
+    dir_list = []
     for path, dirs, files in os.walk(root):
         if not(dirname is None) and (dirname in dirs):
-            return os.path.join(path, dirname)
+            dir_list.append(os.path.join(path, dirname))
+            break
         elif not(of_file is None) and (of_file in files):
-            return path
+            dir_list.append(path)
+            break
 
-    return None
+    # ipdb.set_trace()
+    if (len(dir_list) == 0) or not(smart_search):
+        return dir_list
+
+    path_smart = str(pathlib.Path(dir_list[0]).parent)
+
+    for path, dirs, files in os.walk(path_smart):
+        if not(dirname is None) and (dirname in dirs):
+            dir_list.append(os.path.join(path, dirname))
+        elif not(of_file is None) and (of_file in files):
+            dir_list.append(path)
+
+    return set(dir_list)
 
 
 def is_float(value):
@@ -449,28 +464,71 @@ class STOStudy(pydantic.BaseModel):
                        xml_declaration=True,
                        encoding="utf-8")
 
-    def get_stosim_config(self, logging=None):
+    def get_gtsstocmp_version(self, gtsstocmp_path, logging=None):
+
+        cmd_args = [os.path.join(gtsstocmp_path, 'gtsstocmp'),
+                    '--version']
+
+        currentProcess = subprocess.Popen(cmd_args,
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE)
+
+        while currentProcess.poll() is None:
+            pass
+
+        returnCode = currentProcess.poll()
+
+        version = \
+            currentProcess.communicate()[0].decode("utf-8")\
+                                           .split()[1] \
+            if returnCode == 0 \
+            else None
+
+        return version
+
+    def get_stosim_config(self,
+                          update_bin_path=False,
+                          bin_path_search=str(pathlib.Path.home()),
+                          logging=None):
         local_config_filename = AR3SIMU_LOCAL_CONFIG_FILENAME
         local_config_file = pathlib.Path(local_config_filename)
 
-        if not(local_config_file.is_file()):
-            ar3simu_bin_dir = \
+        if not(local_config_file.is_file()) or update_bin_path:
+            ar3simu_bin_dir_list = \
                 find_directory(of_file="gtsstocmp.sh",
-                               root=str(pathlib.Path.home()))
+                               root=bin_path_search)
 
-            if not(ar3simu_bin_dir is None):
-                if not(logging is None):
-                    logging.info(
-                        f"AR3 simulator binary found at {ar3simu_bin_dir}")
-                    logging.info(
-                        f"Configuration saved in file {local_config_filename}")
+            ar3simu_bin_listdict = []
+            if len(ar3simu_bin_dir_list) >= 1:
+
+                for ar3simu_bin_dir in ar3simu_bin_dir_list:
+
+                    gtssto_version = self.get_gtsstocmp_version(
+                        ar3simu_bin_dir,
+                        logging=logging)
+
+                    if gtssto_version is None:
+                        continue
+                    else:
+                        if not(logging is None):
+                            logging.info(
+                                f"AR3 simulator binary found at "
+                                f"{ar3simu_bin_dir} [version {gtssto_version}]"
+                            )
+                        ar3simu_bin_listdict.append(
+                            dict(path=ar3simu_bin_dir,
+                                 version=gtssto_version))
+
+            if len(ar3simu_bin_listdict) >= 1:
 
                 with open(local_config_filename, 'w', encoding="utf-8") \
                         as yaml_file:
                     try:
-                        ar3_config = yaml.dump(
-                            {"ar3bin_folder": ar3simu_bin_dir},
+                        yaml.dump(
+                            {"ar3bin_folders": ar3simu_bin_listdict},
                             yaml_file)
+                        logging.info(
+                            f"Configuration saved in file {local_config_filename}")
 
                     except yaml.YAMLError as exc:
                         print(exc)
@@ -494,9 +552,35 @@ class STOStudy(pydantic.BaseModel):
 
         return stosim_local_config
 
-    def run_simu(self, path=".", logging=None):
+    def run_simu(self, path=".",
+                 gtssto_version=None,
+                 update_bin_path=False,
+                 bin_path_search=None,
+                 logging=None):
 
-        stosim_local_config = self.get_stosim_config(logging=logging)
+        if bin_path_search is None:
+            bin_path_search = str(pathlib.Path.home())
+
+        stosim_local_config = \
+            self.get_stosim_config(update_bin_path=update_bin_path,
+                                   bin_path_search=bin_path_search,
+                                   logging=logging)
+
+        ar3bin_folder_list = stosim_local_config.get("ar3bin_folders", [])
+
+        ar3bin_version_path_dict = \
+            {val["version"]: val["path"]
+             for val in ar3bin_folder_list}
+        if gtssto_version is None:
+            ar3bin_path = list(ar3bin_version_path_dict.values())[-1]
+            gtssto_version = \
+                self.get_gtsstocmp_version(
+                    ar3bin_path,
+                    logging=logging)
+        else:
+            ar3bin_path = ar3bin_version_path_dict.get(gtssto_version)
+            if ar3bin_path is None:
+                raise ValueError(f"GTS Sto version {gtssto_version} not found")
 
         study_alt_filename = os.path.join(
             path, f"{self.main_block}.alt")
@@ -519,10 +603,15 @@ class STOStudy(pydantic.BaseModel):
         #                              .replace(app_bknd.project_folder, "")\
         #                              .strip(os.path.sep)
 
+        log_msg = colored.stylize(
+            f"Start simulation process [version {gtssto_version}]",
+            colored.fg("blue") + colored.attr("bold"))
+        logging.info(log_msg)
+
         args = ['ar3simu',
                 '-v',
                 '-p',
-                '-a', stosim_local_config.get("ar3bin_folder", "."),
+                '-a', ar3bin_path,
                 '-s', self.main_block,
                 '-l', study_alt_filename,
                 '-i', study_idf_filename,
