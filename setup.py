@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-VERSION = "0.0.19"
+VERSION = "0.0.20"
 
 setup(name='pyar3',
       version=VERSION,

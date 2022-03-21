@@ -124,13 +124,13 @@ class STOMetaData(pydantic.BaseModel):
         None, description="AR3 compiler version")
 
     @classmethod
-    def from_raw_lines(cls, raw_lines):
+    def from_raw_lines(cls, raw_lines, sep="\t"):
 
         cls_specs = {}
 
         start = len(raw_lines)
         for i, line in enumerate(raw_lines):
-            line_split = line.split("\t")
+            line_split = line.split(sep)
             key = line_split[0].strip()
             if key == "Meta-Data":
                 start = i + 1
@@ -138,7 +138,7 @@ class STOMetaData(pydantic.BaseModel):
 
         for i, line in enumerate(raw_lines[start:]):
 
-            line_split = line.split("\t")
+            line_split = line.split(sep)
 
             key = line_split[0].strip()
             if len(line_split) <= 1:
@@ -188,13 +188,13 @@ class STOMissionResult(pydantic.BaseModel):
                                              description="Simulation date end")
 
     @classmethod
-    def from_raw_lines(cls, raw_lines):
+    def from_raw_lines(cls, raw_lines, sep="\t"):
 
         cls_specs = {}
 
         start = len(raw_lines)
         for i, line in enumerate(raw_lines):
-            line_split = line.split("\t")
+            line_split = line.split(sep)
             key = line_split[0].strip()
             if key == "Mission":
                 start = i + 1
@@ -203,7 +203,7 @@ class STOMissionResult(pydantic.BaseModel):
         indic_def_lines = raw_lines[start:]
         for i, line in enumerate(indic_def_lines):
 
-            line_split = line.split("\t")
+            line_split = line.split(sep)
 
             key = line_split[0].strip()
             if len(line_split) <= 1:
@@ -221,7 +221,7 @@ class STOMissionResult(pydantic.BaseModel):
             elif key == "Completed":
                 cls_specs["date_end"] = value
             elif key == "Number of events fired per execution":
-                event_fire_stats_str = indic_def_lines[i+2].split("\t")
+                event_fire_stats_str = indic_def_lines[i+2].split(sep)
 
                 cls_specs["event_fired_stats"] = dict(
                     mean=float(event_fire_stats_str[0]),
@@ -244,6 +244,13 @@ class STOStudyResults(pydantic.BaseModel):
     indicators: typing.Dict[str, STOIndicator] = pydantic.Field(
         {}, description="Dictionary of simulation indicators")
 
+    @staticmethod
+    def get_simu_csv_result_sep(raw_lines):
+        if ";" in raw_lines[1]:
+            return ";"
+        else:
+            return "\t"
+
     @classmethod
     def from_result_csv(cls, filename, **kwrds):
 
@@ -252,7 +259,9 @@ class STOStudyResults(pydantic.BaseModel):
 
             file_lines = file.readlines()
 
-        obj = cls.from_raw_lines(file_lines)
+        simu_csv_sep = cls.get_simu_csv_result_sep(file_lines)
+
+        obj = cls.from_raw_lines(file_lines, sep=simu_csv_sep)
         # obj = cls(**{**study_specs, **kwrds})
 
         # obj.load_data()
@@ -261,13 +270,16 @@ class STOStudyResults(pydantic.BaseModel):
         return obj
 
     @classmethod
-    def from_raw_lines(cls, raw_lines):
+    def from_raw_lines(cls, raw_lines, sep="\t"):
 
         cls_specs = {}
 
-        cls_specs["meta_data"] = STOMetaData.from_raw_lines(raw_lines)
-        cls_specs["mission"] = STOMissionResult.from_raw_lines(raw_lines)
-        cls_specs["indicators"] = cls.indicators_from_raw_lines(raw_lines)
+        cls_specs["meta_data"] = STOMetaData.from_raw_lines(raw_lines,
+                                                            sep=sep)
+        cls_specs["mission"] = STOMissionResult.from_raw_lines(raw_lines,
+                                                               sep=sep)
+        cls_specs["indicators"] = cls.indicators_from_raw_lines(raw_lines,
+                                                                sep=sep)
 
         # Update indicator block information
         for indic_id, indic in cls_specs["indicators"].items():
@@ -279,13 +291,13 @@ class STOStudyResults(pydantic.BaseModel):
         return obj
 
     @classmethod
-    def indicators_from_raw_lines(cls, raw_lines):
+    def indicators_from_raw_lines(cls, raw_lines, sep="\t"):
 
         indics_dict = {}
 
         start = len(raw_lines)
         for i, line in enumerate(raw_lines):
-            line_split = line.split("\t")
+            line_split = line.split(sep)
             key = line_split[0].strip()
             if key == "Indicators":
                 start = i + 2
@@ -294,7 +306,7 @@ class STOStudyResults(pydantic.BaseModel):
         indic_def_lines = raw_lines[start:]
         for i, line in enumerate(indic_def_lines):
 
-            line_split = line.split("\t")
+            line_split = line.split(sep)
 
             if len(line_split) <= 1:
                 start = i + 1
@@ -302,7 +314,7 @@ class STOStudyResults(pydantic.BaseModel):
 
             indic_id = line_split[0].strip()
             observer = line_split[1].strip()
-            # TODO: TO BE IMPROVED BUT NEED MORE TETS
+            # TODO: TO BE IMPROVED BUT NEED MORE TESTS
             # value = line_split[2].strip()
             # measure = line_split[3].strip()
             indics_dict[indic_id] = \
@@ -313,12 +325,11 @@ class STOStudyResults(pydantic.BaseModel):
             # value=value,
             # type="Boolean" if value in ["true", "false"] else "Real",
             # measure=measure)
-
         indic_id = None
         indic_data_lines = indic_def_lines[start:]
         for i, line in enumerate(indic_data_lines):
 
-            line_split = line.strip().split("\t")
+            line_split = line.strip().split(sep)
 
             if line_split[0] == "Indicator":
                 indic_id = line_split[1]
@@ -493,6 +504,8 @@ class STOStudy(pydantic.BaseModel):
         local_config_filename = AR3SIMU_LOCAL_CONFIG_FILENAME
         local_config_file = pathlib.Path(local_config_filename)
 
+        # ipdb.set_trace()
+
         if not(local_config_file.is_file()) or update_bin_path:
             ar3simu_bin_dir_list = \
                 find_directory(of_file="gtsstocmp.sh",
@@ -572,6 +585,7 @@ class STOStudy(pydantic.BaseModel):
             {val["version"]: val["path"]
              for val in ar3bin_folder_list}
         if gtssto_version is None:
+            # ipdb.set_trace()
             ar3bin_path = list(ar3bin_version_path_dict.values())[-1]
             gtssto_version = \
                 self.get_gtsstocmp_version(
@@ -580,7 +594,10 @@ class STOStudy(pydantic.BaseModel):
         else:
             ar3bin_path = ar3bin_version_path_dict.get(gtssto_version)
             if ar3bin_path is None:
-                raise ValueError(f"GTS Sto version {gtssto_version} not found")
+                error_msg = colored.stylize(
+                    f"Simulator version {gtssto_version} not found",
+                    colored.fg("red") + colored.attr("bold"))
+                raise ValueError(error_msg)
 
         study_alt_filename = os.path.join(
             path, f"{self.main_block}.alt")
