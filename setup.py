@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-VERSION = "0.0.20"
+VERSION = "0.0.21"
 
 setup(name='pyar3',
       version=VERSION,
@@ -37,11 +37,11 @@ setup(name='pyar3',
       platforms='ALL',
       python_requires='>=3.8',
       install_requires=[
-          "pandas==1.3.3",
-          "pydantic==1.8.2",
-          "xlsxwriter==3.0.1",
-          "lxml==4.6.3",
-          "colored==1.4.3",
+          "pandas>=1.4.4",
+          "pydantic>=1.10.2",
+          "xlsxwriter",
+          "lxml",
+          "colored",
       ],
       zip_safe=False,
       scripts=[
